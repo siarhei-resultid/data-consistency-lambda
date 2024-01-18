@@ -1,0 +1,26 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  build:
+    commands:
+      - echo Start testing of ${BUILD_ENV}
+      - echo test lambda previous version ${PREVIOUS_LAMDA_VERSION}
+      - echo temp_stage lambda previous version ${PREVIOUS_TEMP_STAGE_LAMDA_VERSION}
+      - echo temp_pre_prod lambda previous version ${PREVIOUS_TEMP_PRE_PROD_LAMDA_VERSION}
+      - echo temp_prod_dr lambda previous version ${PREVIOUS_TEMP_PROD_DR_LAMBDA_VERSION}
+      - pip install pytest
+      - pytest test/test.py
+  post_build:
+    commands:
+      - echo Testing of ${BUILD_ENV} is completed on `date`
+      - echo $CODEBUILD_BUILD_SUCCEEDING
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" != 1 ]; then
+          aws lambda update-alias --function-name ${FUNCTION_NAME} --name test --function-version $PREVIOUS_LAMDA_VERSION;
+          aws lambda update-alias --function-name ${FUNCTION_NAME} --name temp_stage --function-version $PREVIOUS_TEMP_STAGE_LAMDA_VERSION;
+          aws lambda update-alias --function-name ${FUNCTION_NAME} --name temp_pre_prod --function-version $PREVIOUS_TEMP_PRE_PROD_LAMDA_VERSION;
+          aws lambda update-alias --function-name ${FUNCTION_NAME} --region ${DR_REGION} --name temp_prod --function-version $PREVIOUS_TEMP_PROD_DR_LAMBDA_VERSION;
+        fi

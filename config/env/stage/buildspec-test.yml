@@ -1,0 +1,21 @@
+version: 0.2
+
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  build:
+    commands:
+      - echo previous lambda version ${PREVIOUS_LAMDA_VERSION}
+      - echo Start testing of ${BUILD_ENV}
+      - pip install pytest
+      - pytest test/test.py
+  post_build:
+    commands:
+      - echo Testing of ${BUILD_ENV} is completed on `date`
+      - echo $CODEBUILD_BUILD_SUCCEEDING
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" != 1 ]; then
+          aws lambda update-alias --function-name ${FUNCTION_NAME} --name stage --function-version ${PREVIOUS_LAMDA_VERSION};
+        fi

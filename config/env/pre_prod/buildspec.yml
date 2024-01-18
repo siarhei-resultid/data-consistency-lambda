@@ -1,0 +1,16 @@
+version: 0.2
+
+env:
+  git-credential-helper: yes
+  exported-variables:
+    - PREVIOUS_LAMDA_VERSION
+
+phases:
+  pre_build:
+    commands:
+      - PREVIOUS_LAMDA_VERSION=$(aws lambda get-alias --function-name ${FUNCTION_NAME} --name pre_prod | jq -r .FunctionVersion)
+  build:
+    commands:
+      - aws s3 cp s3://resultid-deployment-scripts/blue-green-deployment/pre_prod/lambda-build.sh lambda-build.sh
+      - chmod +x lambda-build.sh
+      - bash -e lambda-build.sh

@@ -1,0 +1,37 @@
+version: 0.2
+
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  build:
+    commands:
+      - echo previous lambda version ${PREVIOUS_LAMDA_VERSION}
+      - echo Start testing of ${BUILD_ENV}
+      - pip install pytest
+      - pytest test/test.py
+  post_build:
+    commands:
+      - echo Testing of ${BUILD_ENV} is completed on `date`
+      - echo $CODEBUILD_BUILD_SUCCEEDING
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" != 1 ]; then
+          aws lambda update-alias --function-name ${FUNCTION_NAME} --name prod --function-version ${PREVIOUS_LAMDA_VERSION};
+          exit 1
+        fi
+      - echo Start cleaning up
+      - |
+        START_VERSION=$(aws lambda list-versions-by-function --function-name ${FUNCTION_NAME} --query "Versions[1]" | jq -r .Version)
+        END_VERSION_JSON=$(aws lambda list-versions-by-function --function-name ${FUNCTION_NAME} --query "Versions[-21]")
+        if [ "$END_VERSION_JSON" != null ]; then
+          END_VERSION=$(jq -r '.Version' <<<"$END_VERSION_JSON")
+          if [[ "$END_VERSION" != *"LATEST"* ]]; then
+            echo $START_VERSION - $END_VERSION
+            for (( i=$START_VERSION; i<=$END_VERSION; i++ ))
+            do
+              aws lambda delete-function --function-name ${FUNCTION_NAME} --qualifier $i
+              echo lambda VERSION $i has been deleted
+            done
+          fi
+        fi

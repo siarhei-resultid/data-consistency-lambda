@@ -1,0 +1,22 @@
+version: 0.2
+
+env:
+  git-credential-helper: yes
+  exported-variables:
+    - PREVIOUS_LAMDA_VERSION
+    - PREVIOUS_TEMP_STAGE_LAMDA_VERSION
+    - PREVIOUS_TEMP_PRE_PROD_LAMDA_VERSION
+    - PREVIOUS_TEMP_PROD_DR_LAMBDA_VERSION
+
+phases:
+  pre_build:
+    commands:
+      - PREVIOUS_LAMDA_VERSION=$(aws lambda get-alias --function-name ${FUNCTION_NAME} --name ${BUILD_ENV} | jq -r .FunctionVersion)
+      - PREVIOUS_TEMP_STAGE_LAMDA_VERSION=$(aws lambda get-alias --function-name ${FUNCTION_NAME} --name temp_stage | jq -r .FunctionVersion)
+      - PREVIOUS_TEMP_PRE_PROD_LAMDA_VERSION=$(aws lambda get-alias --function-name ${FUNCTION_NAME} --name temp_pre_prod | jq -r .FunctionVersion)
+      - PREVIOUS_TEMP_PROD_DR_LAMBDA_VERSION=$(aws lambda get-alias --function-name ${FUNCTION_NAME} --region ${DR_REGION} --name temp_prod | jq -r .FunctionVersion)
+  build:
+    commands:
+      - aws s3 cp s3://resultid-deployment-scripts/blue-green-deployment/test/lambda-build.sh lambda-build.sh
+      - chmod +x lambda-build.sh
+      - bash -e lambda-build.sh
